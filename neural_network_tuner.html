@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Network Hyperparameter Tuner</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Code+Pro:wght@300;400;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Source Code Pro', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(0, 255, 65, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 255, 65, 0.05) 0%, transparent 50%),
+                linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .matrix-rain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.1;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+        }
+        
+        h1 {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #00ff41, #00ff41, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            letter-spacing: 3px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #8b949e;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .control-group {
+            background: rgba(22, 27, 34, 0.8);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 25px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-group::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ff41, transparent);
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .control-group h3 {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #00ff41;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .parameter-item {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(13, 17, 23, 0.6);
+            border-radius: 8px;
+            border-left: 3px solid #00ff41;
+        }
+        
+        .parameter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .parameter-name {
+            font-weight: 600;
+            color: #f0f6fc;
+            font-size: 1rem;
+        }
+        
+        .parameter-value {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+            padding: 4px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        .parameter-description {
+            font-size: 0.85rem;
+            color: #8b949e;
+            margin-bottom: 12px;
+            line-height: 1.4;
+            font-style: italic;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #21262d;
+            outline: none;
+            -webkit-appearance: none;
+            border: 1px solid #30363d;
+            position: relative;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00ff41;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+            border: 2px solid #0d1117;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00ff41;
+            cursor: pointer;
+            border: 2px solid #0d1117;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+        }
+        
+        .slider:focus {
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+        
+        .train-button {
+            font-family: 'Orbitron', monospace;
+            background: linear-gradient(45deg, #238636, #2ea043);
+            color: #ffffff;
+            border: 2px solid #00ff41;
+            padding: 18px 50px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            margin: 30px auto;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .train-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .train-button:hover::before {
+            left: 100%;
+        }
+        
+        .train-button:hover {
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .train-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .results {
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .results::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #2ea043, transparent);
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .results h3 {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: #00ff41;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(13, 17, 23, 0.8);
+            border-radius: 8px;
+            border-left: 3px solid #2ea043;
+        }
+        
+        .metric-label {
+            font-weight: 600;
+            color: #f0f6fc;
+        }
+        
+        .metric-value {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            color: #00ff41;
+            background: rgba(0, 255, 65, 0.1);
+            padding: 6px 15px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #21262d;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 1px solid #30363d;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #238636, #00ff41);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+        }
+        
+        .training-log {
+            background: #0d1117;
+            color: #00ff41;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 0.9rem;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid #30363d;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .training-log::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .training-log::-webkit-scrollbar-track {
+            background: #21262d;
+        }
+        
+        .training-log::-webkit-scrollbar-thumb {
+            background: #00ff41;
+            border-radius: 4px;
+        }
+        
+        .recommendations-section {
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .recommendations-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #f39c12, transparent);
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .recommendations-section h3 {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: #f39c12;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .recommendation-item {
+            background: rgba(13, 17, 23, 0.8);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #f39c12;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .recommendation-item.critical {
+            border-left-color: #f85149;
+            background: rgba(248, 81, 73, 0.05);
+        }
+        
+        .recommendation-item.warning {
+            border-left-color: #f39c12;
+            background: rgba(243, 156, 18, 0.05);
+        }
+        
+        .recommendation-item.improvement {
+            border-left-color: #2ea043;
+            background: rgba(46, 160, 67, 0.05);
+        }
+        
+        .recommendation-item.success {
+            border-left-color: #00ff41;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        
+        .recommendation-item.optimization {
+            border-left-color: #1f6feb;
+            background: rgba(31, 111, 235, 0.05);
+        }
+        
+        .recommendation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .recommendation-title {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            color: #f0f6fc;
+            font-size: 1.1rem;
+        }
+        
+        .recommendation-type {
+            font-size: 0.8rem;
+            padding: 4px 12px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        .recommendation-type.critical {
+            background: #f85149;
+            color: white;
+        }
+        
+        .recommendation-type.warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .recommendation-type.improvement {
+            background: #2ea043;
+            color: white;
+        }
+        
+        .recommendation-type.success {
+            background: #00ff41;
+            color: #0d1117;
+        }
+        
+        .recommendation-type.optimization {
+            background: #1f6feb;
+            color: white;
+        }
+        
+        .recommendation-issue {
+            color: #8b949e;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        
+        .recommendation-text {
+            color: #f0f6fc;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        
+        .recommendation-action {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            color: #00ff41;
+            font-family: 'Source Code Pro', monospace;
+            font-weight: 600;
+        }
+        
+        .quick-apply-btn {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 10px;
+            font-family: 'Source Code Pro', monospace;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-apply-btn:hover {
+            background: linear-gradient(45deg, #e67e22, #d68910);
+            box-shadow: 0 0 15px rgba(243, 156, 18, 0.4);
+        }
+        
+        .performance-summary {
+            background: rgba(13, 17, 23, 0.9);
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(22, 27, 34, 0.8);
+            border-radius: 6px;
+            border-left: 3px solid #00ff41;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        
+        .summary-value {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #00ff41;
+        }
+        
+        .recommendation {
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid #30363d;
+            color: #f0f6fc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 400;
+            border-left: 4px solid #00ff41;
+        }
+        
+        .warning {
+            border-left-color: #f85149;
+            color: #f85149;
+        }
+        
+        .success {
+            border-left-color: #2ea043;
+            color: #2ea043;
+        }
+    </style>
+</head>
+<body>
+    <canvas class="matrix-rain" id="matrix-canvas"></canvas>
+    
+    <div class="container">
+        <h1>NEURAL NETWORK TUNER</h1>
+        <p class="subtitle">Optimize hyperparameters to achieve maximum accuracy on Fashion-MNIST classification</p>
+        
+        <div class="controls-grid">
+            <div class="control-group">
+                <h3>Training Parameters</h3>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Learning Rate</span>
+                        <span class="parameter-value" id="learning-rate-value">0.10</span>
+                    </div>
+                    <div class="parameter-description">
+                        Controls how large steps the optimizer takes during training. Higher values learn faster but may overshoot optimal weights, causing instability. Lower values are more stable but slower to converge.
+                    </div>
+                    <input type="range" min="0.01" max="1.0" step="0.01" value="0.1" class="slider" id="learning-rate">
+                </div>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Iterations</span>
+                        <span class="parameter-value" id="iterations-value">500</span>
+                    </div>
+                    <div class="parameter-description">
+                        Number of training cycles through the entire dataset. More iterations allow the model to learn better patterns but may lead to overfitting. Too few iterations result in underfitting.
+                    </div>
+                    <input type="range" min="100" max="2000" step="50" value="500" class="slider" id="iterations">
+                </div>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Batch Size</span>
+                        <span class="parameter-value" id="batch-size-value">32</span>
+                    </div>
+                    <div class="parameter-description">
+                        Number of samples processed before updating model weights. Larger batches provide more stable gradients but require more memory. Smaller batches add noise that can help escape local minima.
+                    </div>
+                    <input type="range" min="16" max="256" step="16" value="32" class="slider" id="batch-size">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Network Architecture</h3>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Hidden Layer 1 Size</span>
+                        <span class="parameter-value" id="hidden1-value">128</span>
+                    </div>
+                    <div class="parameter-description">
+                        Number of neurons in the first hidden layer. More neurons increase the model's capacity to learn complex patterns but also increase computational cost and risk of overfitting.
+                    </div>
+                    <input type="range" min="32" max="512" step="32" value="128" class="slider" id="hidden1-size">
+                </div>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Hidden Layer 2 Size</span>
+                        <span class="parameter-value" id="hidden2-value">64</span>
+                    </div>
+                    <div class="parameter-description">
+                        Number of neurons in the second hidden layer. Set to 0 to disable this layer. Deep networks can learn hierarchical features but are harder to train and more prone to overfitting.
+                    </div>
+                    <input type="range" min="0" max="256" step="16" value="64" class="slider" id="hidden2-size">
+                </div>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Dropout Rate</span>
+                        <span class="parameter-value" id="dropout-value">0.20</span>
+                    </div>
+                    <div class="parameter-description">
+                        Probability of randomly setting neurons to zero during training. Helps prevent overfitting by forcing the network to not rely on specific neurons. 0 = no dropout, higher values = more regularization.
+                    </div>
+                    <input type="range" min="0" max="0.8" step="0.1" value="0.2" class="slider" id="dropout-rate">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Optimization Settings</h3>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Learning Rate Decay</span>
+                        <span class="parameter-value" id="lr-decay-value">0.950</span>
+                    </div>
+                    <div class="parameter-description">
+                        Factor by which learning rate is multiplied each epoch. Values < 1.0 gradually reduce learning rate during training, helping fine-tune weights in later stages. 1.0 = no decay.
+                    </div>
+                    <input type="range" min="0.9" max="1.0" step="0.01" value="0.95" class="slider" id="lr-decay">
+                </div>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Weight Decay (L2)</span>
+                        <span class="parameter-value" id="weight-decay-value">0.001</span>
+                    </div>
+                    <div class="parameter-description">
+                        L2 regularization strength that penalizes large weights. Helps prevent overfitting by encouraging the model to use smaller, more generalizable weights. Higher values = stronger regularization.
+                    </div>
+                    <input type="range" min="0" max="0.01" step="0.001" value="0.001" class="slider" id="weight-decay">
+                </div>
+                
+                <div class="parameter-item">
+                    <div class="parameter-header">
+                        <span class="parameter-name">Momentum</span>
+                        <span class="parameter-value" id="momentum-value">0.90</span>
+                    </div>
+                    <div class="parameter-description">
+                        Fraction of previous gradient used in current update. Helps accelerate training in consistent directions and dampen oscillations. Higher values maintain direction longer, 0 = no momentum.
+                    </div>
+                    <input type="range" min="0" max="0.99" step="0.01" value="0.9" class="slider" id="momentum">
+                </div>
+            </div>
+        </div>
+        
+        <div class="recommendation" id="recommendation">
+            Recommended starting point: Learning Rate 0.2, 128 hidden neurons, 800 iterations
+        </div>
+        
+        <button class="train-button" id="train-btn" onclick="trainModel()">
+            Initialize Training Sequence
+        </button>
+        
+        <div class="results" id="results" style="display: none;">
+            <h3>Training Results</h3>
+            
+            <div class="metric">
+                <span class="metric-label">Final Training Accuracy</span>
+                <span class="metric-value" id="final-accuracy">---%</span>
+            </div>
+            
+            <div class="metric">
+                <span class="metric-label">Validation Accuracy</span>
+                <span class="metric-value" id="validation-accuracy">---%</span>
+            </div>
+            
+            <div class="metric">
+                <span class="metric-label">Training Duration</span>
+                <span class="metric-value" id="training-time">--- seconds</span>
+            </div>
+            
+            <div class="metric">
+                <span class="metric-label">Convergence Point</span>
+                <span class="metric-value" id="convergence-speed">--- iterations</span>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="accuracy-progress"></div>
+            </div>
+            
+            <div class="training-log" id="training-log">
+                Initializing neural network training protocol...
+            </div>
+            
+            <div class="recommendations-section" id="recommendations" style="display: none;">
+                <h3>AI-Powered Recommendations</h3>
+                <div class="recommendations-container" id="recommendations-container">
+                    <!-- Recommendations will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Matrix rain effect
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        const matrix = "01";
+        const matrixArray = matrix.split("");
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+        
+        for (let x = 0; x < columns; x++) {
+            drops[x] = 1;
+        }
+        
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(13, 17, 23, 0.04)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#00ff41';
+            ctx.font = fontSize + 'px Source Code Pro';
+            
+            for (let i = 0; i < drops.length; i++) {
+                const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        
+        setInterval(drawMatrix, 50);
+        
+        // Parameter controls
+        document.querySelectorAll('.slider').forEach(slider => {
+            const valueDisplay = document.getElementById(slider.id + '-value');
+            
+            slider.addEventListener('input', function() {
+                let value = this.value;
+                if (this.id.includes('rate') || this.id.includes('decay') || this.id.includes('dropout') || this.id.includes('momentum')) {
+                    value = parseFloat(value).toFixed(3);
+                } else {
+                    value = parseInt(value);
+                }
+                valueDisplay.textContent = value;
+                updateRecommendation();
+            });
+        });
+        
+        function updateRecommendation() {
+            const lr = parseFloat(document.getElementById('learning-rate').value);
+            const hidden1 = parseInt(document.getElementById('hidden1-size').value);
+            const iterations = parseInt(document.getElementById('iterations').value);
+            const recommendation = document.getElementById('recommendation');
+            
+            let message = "";
+            let className = "";
+            
+            if (lr > 0.5) {
+                message = "WARNING: High learning rate detected. May cause training instability and gradient explosion. Recommended range: 0.1-0.3";
+                className = "warning";
+            } else if (lr < 0.05) {
+                message = "NOTICE: Low learning rate will result in slow convergence. Consider increasing to 0.1-0.2 for faster training.";
+                className = "warning";
+            } else if (hidden1 < 64) {
+                message = "ANALYSIS: Small network capacity may limit pattern recognition ability. Consider increasing hidden layer size for complex datasets.";
+                className = "";
+            } else if (hidden1 > 256 && iterations < 500) {
+                message = "OPTIMIZATION: Large network requires more iterations for proper convergence. Increase training duration for optimal results.";
+                className = "";
+            } else {
+                message = "SYSTEM STATUS: Parameter configuration is within optimal ranges. Ready for training initialization.";
+                className = "success";
+            }
+            
+            recommendation.textContent = message;
+            recommendation.className = `recommendation ${className}`;
+        }
+        
+        function trainModel() {
+            const trainBtn = document.getElementById('train-btn');
+            const results = document.getElementById('results');
+            const log = document.getElementById('training-log');
+            
+            const params = {
+                learningRate: parseFloat(document.getElementById('learning-rate').value),
+                iterations: parseInt(document.getElementById('iterations').value),
+                batchSize: parseInt(document.getElementById('batch-size').value),
+                hidden1Size: parseInt(document.getElementById('hidden1-size').value),
+                hidden2Size: parseInt(document.getElementById('hidden2-size').value),
+                dropoutRate: parseFloat(document.getElementById('dropout-rate').value),
+                lrDecay: parseFloat(document.getElementById('lr-decay').value),
+                weightDecay: parseFloat(document.getElementById('weight-decay').value),
+                momentum: parseFloat(document.getElementById('momentum').value)
+            };
+            
+            // Disable button and show training
+            trainBtn.disabled = true;
+            trainBtn.textContent = 'CONNECTING TO PYTHON...';
+            results.style.display = 'block';
+            log.innerHTML = 'Connecting to Python backend...\n';
+            
+            // Send training request to Flask backend
+            fetch('http://localhost:5000/train', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(params)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    log.innerHTML += 'Connected! Training started...\n';
+                    trainBtn.textContent = 'TRAINING IN PROGRESS...';
+                    
+                    // Poll for training status
+                    pollTrainingStatus();
+                } else {
+                    log.innerHTML += `Error: ${data.error}\n`;
+                    trainBtn.disabled = false;
+                    trainBtn.textContent = 'INITIALIZE TRAINING SEQUENCE';
+                }
+            })
+            .catch(error => {
+                log.innerHTML += `Connection failed: ${error}\n`;
+                log.innerHTML += 'Make sure Python Flask server is running!\n';
+                log.innerHTML += 'Run: python app.py\n';
+                trainBtn.disabled = false;
+                trainBtn.textContent = 'INITIALIZE TRAINING SEQUENCE';
+            });
+        }
+        
+        function pollTrainingStatus() {
+            const log = document.getElementById('training-log');
+            const trainBtn = document.getElementById('train-btn');
+            
+            fetch('http://localhost:5000/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update log with new messages
+                if (data.training_log && data.training_log.length > 0) {
+                    const logText = data.training_log.join('\n') + '\n';
+                    log.innerHTML = logText;
+                    log.scrollTop = log.scrollHeight;
+                }
+                
+                // Update progress
+                if (data.current_accuracy > 0) {
+                    document.getElementById('accuracy-progress').style.width = `${data.current_accuracy * 100}%`;
+                }
+                
+                // Check if training is complete
+                if (!data.is_training && data.final_results) {
+                    // Training completed - show final results
+                    const results = data.final_results;
+                    document.getElementById('final-accuracy').textContent = `${(results.final_accuracy * 100).toFixed(2)}%`;
+                    document.getElementById('validation-accuracy').textContent = `${(results.validation_accuracy * 100).toFixed(2)}%`;
+                    document.getElementById('training-time').textContent = `${results.training_time.toFixed(1)} seconds`;
+                    document.getElementById('convergence-speed').textContent = `${results.total_iterations} iterations`;
+                    
+                    // Show recommendations if available
+                    if (data.analysis) {
+                        displayRecommendations(data.analysis);
+                    }
+                    
+                    // Re-enable button
+                    trainBtn.disabled = false;
+                    trainBtn.textContent = 'REINITIALIZE TRAINING';
+                } else if (data.is_training) {
+                    // Continue polling if still training
+                    setTimeout(pollTrainingStatus, 1000);
+                } else {
+                    // Training stopped but no results - probably an error
+                    trainBtn.disabled = false;
+                    trainBtn.textContent = 'REINITIALIZE TRAINING';
+                }
+            })
+            .catch(error => {
+                log.innerHTML += `Status polling failed: ${error}\n`;
+                trainBtn.disabled = false;
+                trainBtn.textContent = 'REINITIALIZE TRAINING';
+            });
+        }
+        
+        function displayRecommendations(analysis) {
+            const recommendationsSection = document.getElementById('recommendations');
+            const container = document.getElementById('recommendations-container');
+            
+            // Show the recommendations section
+            recommendationsSection.style.display = 'block';
+            
+            // Create performance summary
+            const summary = analysis.summary;
+            const summaryHtml = `
+                <div class="performance-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">Performance</div>
+                        <div class="summary-value">${summary.performance_tier.replace('_', ' ').toUpperCase()}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Generalization</div>
+                        <div class="summary-value">${summary.overfitting_status.toUpperCase()}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Convergence</div>
+                        <div class="summary-value">${summary.convergence_speed.toUpperCase()}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Priority</div>
+                        <div class="summary-value">${analysis.priority_level.toUpperCase()}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Create recommendations HTML
+            let recommendationsHtml = '';
+            analysis.recommendations.forEach((rec, index) => {
+                recommendationsHtml += `
+                    <div class="recommendation-item ${rec.type}">
+                        <div class="recommendation-header">
+                            <span class="recommendation-title">${rec.title}</span>
+                            <span class="recommendation-type ${rec.type}">${rec.type}</span>
+                        </div>
+                        <div class="recommendation-issue">${rec.issue}</div>
+                        <div class="recommendation-text">${rec.recommendation}</div>
+                        <div class="recommendation-action">
+                            <strong>Suggested Action:</strong> ${rec.specific_action}
+                        </div>
+                        ${rec.type !== 'success' ? `<button class="quick-apply-btn" onclick="applyRecommendation(${index}, '${rec.specific_action}')">Quick Apply</button>` : ''}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = summaryHtml + recommendationsHtml;
+        }
+        
+        function applyRecommendation(index, action) {
+            // Parse the recommendation action and apply it to sliders
+            console.log('Applying recommendation:', action);
+            
+            // Learning rate adjustments
+            if (action.toLowerCase().includes('learning rate')) {
+                const lrMatches = action.match(/(\d+\.?\d*)/g);
+                if (lrMatches && lrMatches.length > 0) {
+                    // Take the last number found (most likely the target value)
+                    const newLR = parseFloat(lrMatches[lrMatches.length - 1]);
+                    if (newLR >= 0.01 && newLR <= 1.0) {
+                        document.getElementById('learning-rate').value = newLR;
+                        document.getElementById('learning-rate-value').textContent = newLR.toFixed(3);
+                    }
+                }
+            }
+            
+            // Hidden layer size adjustments - be more specific with parsing
+            if (action.toLowerCase().includes('hidden layer 1') && action.toLowerCase().includes('to')) {
+                // Look for pattern "to X neurons" or "Layer 1 to X"
+                const matches = action.match(/(?:layer 1|layer 1)\s+to\s+(\d+)/i) || 
+                               action.match(/to\s+(\d+)\s+neurons/i) ||
+                               action.match(/set hidden layer 1 to (\d+)/i);
+                
+                if (matches && matches[1]) {
+                    const newSize = parseInt(matches[1]);
+                    if (newSize >= 32 && newSize <= 512) {
+                        document.getElementById('hidden1-size').value = newSize;
+                        document.getElementById('hidden1-value').textContent = newSize;
+                    }
+                }
+            }
+            
+            if (action.toLowerCase().includes('hidden layer 2') && action.toLowerCase().includes('to')) {
+                // Look for pattern "to X neurons" or "Layer 2 to X"
+                const matches = action.match(/(?:layer 2|layer 2)\s+to\s+(\d+)/i) || 
+                               action.match(/set hidden layer 2 to (\d+)/i);
+                
+                if (matches && matches[1]) {
+                    const newSize = parseInt(matches[1]);
+                    if (newSize >= 0 && newSize <= 256) {
+                        document.getElementById('hidden2-size').value = newSize;
+                        document.getElementById('hidden2-value').textContent = newSize;
+                    }
+                }
+            }
+            
+            // Handle percentage-based adjustments
+            if (action.toLowerCase().includes('increase') && action.toLowerCase().includes('by') && action.toLowerCase().includes('%')) {
+                const percentMatch = action.match(/(\d+)%/);
+                if (percentMatch) {
+                    const percent = parseInt(percentMatch[1]);
+                    
+                    if (action.toLowerCase().includes('learning rate')) {
+                        const currentLR = parseFloat(document.getElementById('learning-rate').value);
+                        const newLR = Math.min(currentLR * (1 + percent/100), 1.0);
+                        document.getElementById('learning-rate').value = newLR.toFixed(3);
+                        document.getElementById('learning-rate-value').textContent = newLR.toFixed(3);
+                    }
+                    
+                    if (action.toLowerCase().includes('hidden layer')) {
+                        const currentSize = parseInt(document.getElementById('hidden1-size').value);
+                        const newSize = Math.min(currentSize * (1 + percent/100), 512);
+                        document.getElementById('hidden1-size').value = Math.round(newSize);
+                        document.getElementById('hidden1-value').textContent = Math.round(newSize);
+                    }
+                }
+            }
+            
+            // Handle decrease adjustments
+            if (action.toLowerCase().includes('decrease') && action.toLowerCase().includes('by') && action.toLowerCase().includes('%')) {
+                const percentMatch = action.match(/(\d+)%/);
+                if (percentMatch) {
+                    const percent = parseInt(percentMatch[1]);
+                    
+                    if (action.toLowerCase().includes('hidden layer sizes')) {
+                        const currentSize1 = parseInt(document.getElementById('hidden1-size').value);
+                        const currentSize2 = parseInt(document.getElementById('hidden2-size').value);
+                        
+                        const newSize1 = Math.max(currentSize1 * (1 - percent/100), 32);
+                        const newSize2 = Math.max(currentSize2 * (1 - percent/100), 0);
+                        
+                        document.getElementById('hidden1-size').value = Math.round(newSize1);
+                        document.getElementById('hidden1-value').textContent = Math.round(newSize1);
+                        document.getElementById('hidden2-size').value = Math.round(newSize2);
+                        document.getElementById('hidden2-value').textContent = Math.round(newSize2);
+                    }
+                }
+            }
+            
+            // Iterations adjustments
+            if (action.toLowerCase().includes('iterations') || action.toLowerCase().includes('train for')) {
+                const iterMatches = action.match(/(\d+)\s*iterations/i);
+                if (iterMatches && iterMatches[1]) {
+                    const newIter = parseInt(iterMatches[1]);
+                    if (newIter >= 100 && newIter <= 2000) {
+                        document.getElementById('iterations').value = newIter;
+                        document.getElementById('iterations-value').textContent = newIter;
+                    }
+                }
+            }
+            
+            // Dropout adjustments
+            if (action.toLowerCase().includes('dropout') && action.toLowerCase().includes('to')) {
+                const dropMatches = action.match(/(?:dropout|rate)\s+to\s+(\d+\.?\d*)/i) ||
+                                   action.match(/increase dropout.*?(\d+\.?\d*)/i);
+                
+                if (dropMatches && dropMatches[1]) {
+                    const newDrop = parseFloat(dropMatches[1]);
+                    if (newDrop >= 0 && newDrop <= 0.8) {
+                        document.getElementById('dropout-rate').value = newDrop;
+                        document.getElementById('dropout-value').textContent = newDrop.toFixed(3);
+                    }
+                }
+            }
+            
+            // Learning rate decay adjustments
+            if (action.toLowerCase().includes('decay') && action.toLowerCase().includes('to')) {
+                const decayMatches = action.match(/decay\s+to\s+(\d+\.?\d*)/i);
+                if (decayMatches && decayMatches[1]) {
+                    const newDecay = parseFloat(decayMatches[1]);
+                    if (newDecay >= 0.9 && newDecay <= 1.0) {
+                        document.getElementById('lr-decay').value = newDecay;
+                        document.getElementById('lr-decay-value').textContent = newDecay.toFixed(3);
+                    }
+                }
+            }
+            
+            // Trigger slider update events to refresh displays
+            document.querySelectorAll('.slider').forEach(slider => {
+                slider.dispatchEvent(new Event('input'));
+            });
+            
+            // Update recommendations
+            updateRecommendation();
+            
+            // Provide feedback with the actual changes made
+            const currentParams = {
+                lr: document.getElementById('learning-rate-value').textContent,
+                h1: document.getElementById('hidden1-value').textContent,
+                h2: document.getElementById('hidden2-value').textContent,
+                iter: document.getElementById('iterations-value').textContent,
+                dropout: document.getElementById('dropout-value').textContent
+            };
+            
+            alert(`Applied recommendation: ${action}\n\nCurrent Parameters:\n- Learning Rate: ${currentParams.lr}\n- Hidden Layer 1: ${currentParams.h1}\n- Hidden Layer 2: ${currentParams.h2}\n- Iterations: ${currentParams.iter}\n- Dropout: ${currentParams.dropout}\n\nClick "INITIALIZE TRAINING" to test the new configuration.`);
+        }
+        
+        updateRecommendation();
+    </script>
+</body>
+</html>
