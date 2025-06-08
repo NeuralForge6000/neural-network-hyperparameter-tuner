@@ -200,6 +200,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Fashion-MNIST dataset by Zalando Research
 - Neural network concepts from CS231n Stanford
 - Matrix visual effects inspired by The Matrix (1999)
+- **Special thanks to [Samson Zhang](https://www.youtube.com/watch?v=w8yWXqWQYmU&list=PL90qdYadFKZLTeW0wjO_Hk-p9ItybE36d&index=2)** for his excellent tutorial on building neural networks from scratch, which provided foundational knowledge and inspiration for this implementation
 
 ## Dataset Information
 
