@@ -438,4 +438,24 @@ def health_check():
 if __name__ == '__main__':
     print("Starting Flask server...")
     print("Make sure mnist.csv is in the same directory!")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    
+    # Environment configuration for security and flexibility
+    import os
+    
+    # Default to secure production settings
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    host = os.environ.get('FLASK_HOST', '127.0.0.1')  # Default to localhost only
+    port = int(os.environ.get('FLASK_PORT', '5000'))
+    
+    if debug_mode:
+        print("⚠️  Running in DEBUG mode - only use for development!")
+    else:
+        print("✅ Running in production mode")
+        
+    if host == '0.0.0.0':
+        print("⚠️  Server accessible from network - ensure this is intentional!")
+    else:
+        print(f"🔒 Server bound to {host} (localhost only)")
+    
+    print(f"🚀 Starting server on http://{host}:{port}")
+    app.run(debug=debug_mode, host=host, port=port)

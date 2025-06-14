@@ -76,13 +76,50 @@ pip install -r requirements.txt
 ## Usage
 
 ### 1. Start the Flask Server
+
+**Default (Secure) Mode:**
 ```bash
+python app.py
+```
+This runs on `localhost:5000` with debug disabled - safe for any environment.
+
+**Development Mode (with auto-reload):**
+```bash
+# Windows
+set FLASK_DEBUG=true
+python app.py
+
+# Linux/Mac
+export FLASK_DEBUG=true
+python app.py
+```
+
+**Network Access (for team/demo use):**
+```bash
+# Windows
+set FLASK_HOST=0.0.0.0
+python app.py
+
+# Linux/Mac
+export FLASK_HOST=0.0.0.0
+python app.py
+```
+
+**Custom Configuration:**
+```bash
+# Example: Debug mode on custom port with network access
+set FLASK_DEBUG=true
+set FLASK_HOST=0.0.0.0
+set FLASK_PORT=8080
 python app.py
 ```
 
 You should see:
 ```
 Starting Flask server...
+Running in production mode
+Server bound to 127.0.0.1 (localhost only)
+Starting server on http://127.0.0.1:5000
 Data loaded successfully!
 Training samples: 41000
 Validation samples: 1000
